@@ -27,16 +27,19 @@
           }
         },
         {
-          "name": "Set up Gradle",
-          "uses": "gradle/actions/setup-gradle@v4",
-          "with": {
-            "gradle-version": 8.9
-          }
+          "name": "Install Gradle 8.9 (with fallback mirrors)",
+          "shell": "bash",
+          "run": "set -e\nV=8.9\nmkdir -p \"$HOME/gradle-dist\"\ncd \"$HOME/gradle-dist\"\nok=\"\"\nfor url in \\\n  \"https://github.com/gradle/gradle-distributions/releases/download/v${V}.0/gradle-${V}-bin.zip\" \\\n  \"https://services.gradle.org/distributions/gradle-${V}-bin.zip\" \\\n  \"https://downloads.gradle.org/distributions/gradle-${V}-bin.zip\" \\\n  \"https://mirrors.mit.edu/macports/distfiles/gradle/gradle-${V}-bin.zip\" \\\n  \"https://mirrors.cloud.tencent.com/gradle/gradle-${V}-bin.zip\"; do\n  echo \"Trying $url\"\n  rm -f gradle.zip\n  if curl -fL --retry 3 --retry-delay 5 --retry-all-errors --connect-timeout 20 -o gradle.zip \"$url\" && unzip -tq gradle.zip >/dev/null 2>&1; then\n    ok=1\n    break\n  fi\n  echo \"Failed, trying next source\"\ndone\nif [ -z \"$ok\" ]; then\n  echo \"Could not download Gradle $V from any source.\"\n  exit 1\nfi\nunzip -q gradle.zip\necho \"$HOME/gradle-dist/gradle-${V}/bin\" >> \"$GITHUB_PATH\"\n"
+        },
+        {
+          "name": "Gradle version",
+          "run": "gradle --version"
         },
         {
           "name": "Build debug APK",
           "working-directory": "${{ steps.project.outputs.dir }}",
-          "run": "gradle assembleDebug --stacktrace"
+          "run": "set +e\nOPTS=\"--console=plain --no-daemon -Dorg.gradle.internal.repository.max.retries=6 -Dorg.gradle.internal.repository.initial.backoff=2000 -Dorg.gradle.internal.http.connectionTimeout=90000 -Dorg.gradle.internal.http.socketTimeout=90000\"\nfor i in 1 2 3 4; do\n  echo \"=== Build attempt $i ===\"\n  gradle assembleDebug $OPTS 2>&1 | tee build.log\n  code=${PIPESTATUS[0]}\n  if [ \"$code\" -eq 0 ]; then\n    exit 0\n  fi\n  if grep -qE \"Could not (resolve|download|GET|HEAD)|Received status code 5|HTTP 5|Read timed out|Connection (reset|timed out)|Premature end|Unexpected end of\" build.log; then\n    echo \"Network problem while downloading dependencies. Waiting, then retrying.\"\n    sleep 30\n  else\n    echo \"Build error (not a network problem). See 'What went wrong' above.\"\n    exit \"$code\"\n  fi\ndone\nexit 1\n",
+          "shell": "bash"
         },
         {
           "name": "Upload APK",
