@@ -15,7 +15,7 @@
           "name": "Find project (unzip if needed)",
           "id": "project",
           "shell": "bash",
-          "run": "if [ -f settings.gradle.kts ] || [ -f settings.gradle ]; then\n  dir=\".\"\nelse\n  zip=$(find . -maxdepth 2 -iname '*.zip' -not -path './.git/*' | sort | tail -n 1)\n  if [ -z \"$zip\" ]; then\n    echo \"No Android project and no .zip file found in the repo.\"\n    exit 1\n  fi\n  echo \"Unzipping: $zip\"\n  mkdir -p _unzipped\n  unzip -q -o \"$zip\" -d _unzipped\n  settings=$(find _unzipped \\( -name 'settings.gradle.kts' -o -name 'settings.gradle' \\) | head -n 1)\n  if [ -z \"$settings\" ]; then\n    echo \"settings.gradle(.kts) not found inside the zip.\"\n    exit 1\n  fi\n  dir=$(dirname \"$settings\")\nfi\necho \"Project folder: $dir\"\necho \"dir=$dir\" >> \"$GITHUB_OUTPUT\"\n"
+          "run": "if [ -f settings.gradle.kts ] || [ -f settings.gradle ]; then\n  dir=\".\"\nelse\n  zip=$(find . -maxdepth 2 -iname '*.zip' -not -path './.git/*' | sort -V | tail -n 1)\n  if [ -z \"$zip\" ]; then\n    echo \"No Android project and no .zip file found in the repo.\"\n    exit 1\n  fi\n  echo \"Unzipping: $zip\"\n  mkdir -p _unzipped\n  unzip -q -o \"$zip\" -d _unzipped\n  settings=$(find _unzipped \\( -name 'settings.gradle.kts' -o -name 'settings.gradle' \\) | head -n 1)\n  if [ -z \"$settings\" ]; then\n    echo \"settings.gradle(.kts) not found inside the zip.\"\n    exit 1\n  fi\n  dir=$(dirname \"$settings\")\nfi\necho \"Project folder: $dir\"\necho \"dir=$dir\" >> \"$GITHUB_OUTPUT\"\n"
         },
         {
           "name": "Set up JDK 17",
